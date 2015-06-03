@@ -1,0 +1,5 @@
+{"type":"FeatureCollection","features":[
+{"type":"Feature","id":"1155","geometry":{"type":"Point","coordinates":["5.712837","58.95009"]},"properties":{"name":"bus 1155 - Linje 4"}},
+{"type":"Feature","id":"1159","geometry":{"type":"Point","coordinates":["5.738298","58.93137"]},"properties":{"name":"bus 1159 - Linje 1"}},
+{"type":"Feature","id":"1143","geometry":{"type":"Point","coordinates":["5.735394","58.97094"]},"properties":{"name":"bus 1143 - Linje 4"}},
+{"type":"Feature","id":"1150","geometry":{"type":"Point","coordinates":["5.704778","58.94876"]},"properties":{"name":"bus 1150 - Linje 4"}}]}

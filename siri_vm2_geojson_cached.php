@@ -1,5 +1,5 @@
 <?php
-include("config.php");
+require("config.php");
 
 ob_start("ob_gzhandler"); // enable gzip-compression of data sent to client
 
@@ -38,41 +38,43 @@ function xml_to_array($root) {
             }
         }
     }
-
     return $result;
 }
 
-function errordie($message) {
-    truncateCache();
-
+function errordie($message, $statusCode = 504, $truncateCache = false) {
+    global $cachefil;
     // 504 Gateway Timeout
     //   The server was acting as a gateway or proxy and did not receive 
     //   a timely response from the upstream server.
-    http_response_code(504);
+    http_response_code($statusCode);
 
-    return $message;
+    if ($truncateCache) {
+        truncateFile($cachefil);
+    }
+
+    die($message);
 }
 
 function fetchData() {
-    global $url, $requestorref;
+    global $url, $requestorref;  
 
-    $xml = '<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns1="http://www.kolumbus.no/siri" version="1.4" xmlns:ns2="http://www.siri.org.uk/siri">
-      <SOAP-ENV:Body>
-        <ns1:GetVehicleMonitoring version="1.4">
-          <ServiceRequestInfo version="1.4">
-            <ns2:RequestTimestamp>' . date('c') . '</ns2:RequestTimestamp>
-            <ns2:RequestorRef>' . $requestorref . '</ns2:RequestorRef>
-          </ServiceRequestInfo>
-          <Request version="1.4">
-            <VehicleMonitoringRequest version="1.4">
-              <RequestTimestamp>' . date('c') . '</RequestTimestamp>
-              <VehicleMonitoringRef>VEHICLES_ALL</VehicleMonitoringRef>
-            </VehicleMonitoringRequest>
-          </Request>
-          <RequestExtension version="1.4"/>
-        </ns1:GetVehicleMonitoring>
-      </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>';
+    $xml = '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:siri="http://www.siri.org.uk/siri">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <siri:GetVehicleMonitoring>
+         <ServiceRequestInfo>
+            <siri:RequestTimestamp>' . date('c') . '</siri:RequestTimestamp>
+            <siri:RequestorRef>' . $requestorref . '</siri:RequestorRef>
+         </ServiceRequestInfo>
+         <Request version="1.4">
+            <siri:RequestTimestamp>' . date('c') . '</siri:RequestTimestamp>
+         </Request>
+         <RequestExtension>
+            <!--You may enter ANY elements at this point-->
+         </RequestExtension>
+      </siri:GetVehicleMonitoring>
+   </soapenv:Body>
+</soapenv:Envelope>';
 
     $post_data = array(
         "xml" => $xml,
@@ -87,9 +89,17 @@ function fetchData() {
         ),
     );
 
+    // Sjekkar tid det tar å spørre SIRI-server
+    $time_start = microtime(true);
+
     $context  = stream_context_create($stream_options);
-    $response = @file_get_contents($url, null, $context)
-     or die(errordie("Kunne ikkje hente data frå Kolumbus.")); // fjern denne linja for å få debug-info.
+    $response = file_get_contents($url, null, $context)
+      or errordie("Kunne ikkje hente data frå Kolumbus.", 504, true); // fjern denne linja for å få debug-info.
+
+    // Summerer opp tid
+    $time_end = microtime(true);
+    $time = number_format($time_end - $time_start, 4);
+    header('Kolumbus-query-time: ' . $time);
 
     $ob = simplexml_load_string($response);
     $json = json_encode($ob);
@@ -107,10 +117,7 @@ function fetchData() {
     $va = $data["s:Envelope"]["s:Body"]["GetVehicleMonitoringResponse"]["Answer"]["VehicleMonitoringDelivery"]["VehicleActivity"];
 
     foreach($va as $vehicle) {
-        // print_r($vehicle["MonitoredVehicleJourney"]);
         $v = $vehicle["MonitoredVehicleJourney"];
-        // if ($v["Monitored"] == "true" && isset($v["LineRef"])) {
-            // print_r($v);
             if (isset($v["VehicleLocation"]["Longitude"])) {
                 $details = "";
                 foreach ($v as $key => $value) {
@@ -122,25 +129,15 @@ function fetchData() {
                 $bus["geometry"] = @array(
                     "type" => "Point",
                     "coordinates" => array($v["VehicleLocation"]["Longitude"], $v["VehicleLocation"]["Latitude"])
-                    // "text" => $v["VehicleMode"] . " " . $v["VehicleRef"] . " - Linje " . $v["PublishedLineName"],
-                    // "details" => $details
                     );
                 $bus["properties"] = $v;
-                // $bus["properties"]["name"] = $v["VehicleMode"] . " " . $v["VehicleRef"] . " - Linje " . $v["PublishedLineName"];
                 $bus["properties"]["id"] = $v["VehicleRef"];
                 $bus["properties"]["RecordedAtTime"] = $vehicle["RecordedAtTime"];
-                // $bus["properties"]["details"] = $details;
-                // array(
-                //     "name" => $v["VehicleMode"] . " " . $v["VehicleRef"] . " - Linje " . $v["PublishedLineName"]
-                //     // ,"details" => $details
-                //     );
-                // $bus["properties"][] = $v;
                 $geojson[] = $bus;
             } else {
                 // echo "Feil!";
                 // print_r($v);
             }
-        // }
     }
 
     $geojson_struct = array("type" => "FeatureCollection", "features" => $geojson);
@@ -158,41 +155,54 @@ function isCacheValid($cache, $ttl) {
     return $last_modified > $expire;
 }
 
-function truncateCache() {
-    global $cachefil;
-    $fh = fopen($cachefil, 'w');
+function truncateFile($file) {
+    $fh = fopen($file, 'w');
     fclose($fh);
+}
+
+function hasServerBeenCalledRecently($cache, $ttl) {
+    if (! file_exists($cache)) {
+        errordie("API-cachefile does not exist!", 500);
+        return false;
+    }
+    //check if the file needs to be refreshed or not ?
+    $last_modified = new DateTime('@'.filemtime($cache));
+    $expire = new DateTime('-'.$ttl, new DateTimezone('UTC'));
+    header('X-API-time: ' . $last_modified->format('H:i:s'));
+    header('X-API-expi: ' . $expire->format('H:i:s'));
+    return $last_modified > $expire;
+}
+
+function getCachedData($file) {
+    header('Hurtigbuffer-size: ' . filesize($file));
+    if (filesize($file) == 0) {
+        errordie("Kunne ikkje hente data frå Kolumbus. (hurtigbuffer-treff)");
+    }
+    return file_get_contents($file);
 }
 
 // Cache-settings
 // Recipe from: http://nyamsprod.com/blog/2014/tutorial-how-to-cache-a-resource-using-php/
 $geojson = "";
 
+header('Content-Type: application/vnd.geo+json; charset=utf-8');
 if (!isCacheValid($cachefil, $ttl)) {
-    header('Hurtigbuffer: bom');
 
-    // if last cache hit was an error, invalidate immediately
-    // so that no more requests to source is triggered by request by another user
-    // happening before fetchData()-timeout.
-    if (filesize($cachefil) == 0) {
-        truncateCache();
+    if (hasServerBeenCalledRecently($cacheFileApi, $ttl)) {
+        // API has already been called - use cache
+        header('Hurtigbuffer: treff - API allereie spurt');
+        $geojson = getCachedData($cachefil);                
+    } else {
+        // Ask server for new data
+        truncateFile($cacheFileApi);
+        header('Hurtigbuffer: bom');
+        $geojson = fetchData();
+        file_put_contents($cachefil, $geojson);
     }
 
-    $geojson = fetchData();
-
-    header('Content-Type: application/vnd.geo+json; charset=utf-8');
-
-    file_put_contents($cachefil, $geojson);
 } else {
     header('Hurtigbuffer: treff');
-    header('Content-Type: application/vnd.geo+json; charset=utf-8');
-    header('Hurtigbuffer-size: ' . filesize($cachefil));
-    if (filesize($cachefil) == 0) {
-        errordie("Kunne ikkje hente data frå Kolumbus. (hurtigbuffer-treff)");
-    } else {
-        // header('Hurtigbuffer-size: ' . filesize($cachefil));
-        $geojson = file_get_contents($cachefil);
-    }
+    $geojson = getCachedData($cachefil);
 }
 
 // print_r($dp);

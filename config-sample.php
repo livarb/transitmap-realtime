@@ -10,9 +10,13 @@ $url = '';
 // Unless you have to use a specific value given by the data-vendor, I suggest e-mail or name.
 $requestorref = '';
 
-// Duration of server cache - Time To Live
-$ttl = '5 SECONDS';
+// Duration of cache - Time To Live
+$ttl = '10 SECONDS';
 
 // Cache file. Must be writable (and readable) by PHP
 $cachefil = "vm_geojson.cache";
+
+// File to hold timestamp for when API was last called.
+// Used for safer check of whether API has been called.
+$cacheFileApi = "vm_apicall.cache";
 ?>

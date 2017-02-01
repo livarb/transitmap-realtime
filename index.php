@@ -310,6 +310,11 @@
     }, 
     {
       interval: 10 * 1000,
+      filter: function (feature, layer) {
+        return (
+            feature.properties.Monitored === "true"
+            && feature.properties.PublishedLineName);
+      },
       onEachFeature: function(feature, layer) {
         if (resetCount)
           resetCounters();
@@ -416,10 +421,10 @@
           ga('send', 'event', 'refresh', 'success');
 
           $(".legend").html(
-            "<b>" + total + "</b> køyretøy totalt" + "<br>\n"
-            + "<b>" + monitored + "</b> køyretøy med sporing (Monitored)" + "<br>\n"
+            "<b>Sanntidskart for bussar i Rogaland</b><br>\n"
+            + "<b>" + monitored + "</b> køyretøy med sporing" + "<br>\n"
             + "<b>" + delayed + "</b> meir enn 5 minutt forseinka" + "<br>\n"
-            + "<b>" + active + "</b> køyretøy som har rapportert<br/>&nbsp; posisjon innan siste 5 minutt" + "<br><br>\n"
+            // + "<b>" + active + "</b> køyretøy som har rapportert<br/>&nbsp; posisjon innan siste 5 minutt" + "<br><br>\n"
             + "<b>" + "<a href=\"#\" onClick=\"$('#forklaring').toggle();\">Forklaring på markørar</a></b><br/>" 
             + "<div id=\"forklaring\">\n"
             + "Grøn" + " - i rute (maks 2 min. forseinking) <br/>\n"
@@ -430,7 +435,9 @@
             + "Grå" + " - ikkje monitored<br/>\n"                              
             + "Grå og gjennomsiktig" + " - ikkje monitored, <br/>&nbsp; meir enn 5 min. sidan siste posisjon.</div>\n" 
             + "<br/>"
-            + "App i beta - Livar Bergheim"
+            + "App i beta - Livar Bergheim<br/>"
+            + "Datakjelde: <a href=\"http://next.kolumbus.no/\">Kolumbus<br/>"
+            + "<a href=\"https://github.com/livarb/transitmap-realtime\">Kjeldekode på GitHub</a>"
             );
         } else {
           ga('send', 'event', 'refresh', 'nodata');

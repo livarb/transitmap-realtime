@@ -436,7 +436,7 @@
             + "Grå og gjennomsiktig" + " - ikkje monitored, <br/>&nbsp; meir enn 5 min. sidan siste posisjon.</div>\n" 
             + "<br/>"
             + "App i beta - Livar Bergheim<br/>"
-            + "Datakjelde: <a href=\"http://next.kolumbus.no/\">Kolumbus<br/>"
+            + "Inneholder <a href=\"https://data.norge.no/data/kolumbus/sanntidsdata-kolumbus-buss-i-rogaland\">data under Norsk lisens for<br/> offentlige data (NLOD) tilgjengeliggjort<br/> av Kolumbus<br/>"
             + "<a href=\"https://github.com/livarb/transitmap-realtime\">Kjeldekode på GitHub</a>"
             );
         } else {

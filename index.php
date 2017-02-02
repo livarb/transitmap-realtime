@@ -17,6 +17,10 @@
     <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css"> -->
     <link rel="stylesheet" href="leaflet.awesome-markers.css">
     <link rel="stylesheet" href="style.css">
+<!--
+Inneholder data under Norsk lisens for offentlige data (NLOD) tilgjengeliggjort av Kolumbus.
+https://data.norge.no/data/kolumbus/sanntidsdata-kolumbus-buss-i-rogaland
+-->    
   </head>
   <body>
     <div id="map"></div>
@@ -232,15 +236,6 @@
       realtime.stop();
     }
 
-
-    var osm = L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
-        '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-        'Imagery © <a href="http://mapbox.com">Mapbox</a>',
-      id: 'examples.map-i875mjb7'
-    });
-
     mapLink = '<a href="http://openstreetmap.org">OpenStreetMap</a>';
     translink = '<a href="http://thunderforest.com/">Thunderforest</a>';
     var OSMtransport = L.tileLayer(
@@ -307,7 +302,7 @@
           );
         ga('send', 'event', 'refresh', 'error');
       }
-    }, 
+    },
     {
       interval: 10 * 1000,
       filter: function (feature, layer) {
@@ -403,7 +398,10 @@
           layer.setIcon(blueMarker);
         }
       }
-    }).addTo(map);
+    });
+
+    realtime.getAttribution = function() { return '<a href="http://data.norge.no/data/kolumbus/sanntidsdata-kolumbus-buss-i-rogaland">Kolumbus</a>'; };
+    realtime.addTo(map);
 
     realtime.on('update', function() {
         // console.log("Updated!");
@@ -436,8 +434,7 @@
             + "Grå og gjennomsiktig" + " - ikkje monitored, <br/>&nbsp; meir enn 5 min. sidan siste posisjon.</div>\n" 
             + "<br/>"
             + "App i beta - Livar Bergheim<br/>"
-            + "Inneholder <a href=\"https://data.norge.no/data/kolumbus/sanntidsdata-kolumbus-buss-i-rogaland\">data under Norsk lisens for<br/> offentlige data (NLOD) tilgjengeliggjort<br/> av Kolumbus<br/>"
-            + "<a href=\"https://github.com/livarb/transitmap-realtime\">Kjeldekode på GitHub</a>"
+            + "<a href=\"http://data.norge.no/app/sanntidskart-bussar\">Les meir om appen</a><br/>"
             );
         } else {
           ga('send', 'event', 'refresh', 'nodata');
@@ -459,6 +456,8 @@
     legend.addTo(map);
 
     // Set opp Layer-kontroll
+    // Ikkje nyttig - skrudd av 01.02.2017
+    /*
     var baseLayers = {
       "Standard (OpenStreetMap)": osm,
       "Transport map (OpenStreetMap)": OSMtransport
@@ -471,6 +470,7 @@
       baseLayers,
       overlays
     ).addTo(map);
+    */
 
   </script>
 
